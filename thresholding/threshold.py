@@ -15,6 +15,7 @@ def fbr(data,band1=100,band2=200,band3=300):
         band1(int):             starting point for the first bin
         band2(int):             ending place for the first bin and 
                                 starting for the second bin
+        band3(int):             ending place for the second bin
     returns the frequency band ratio
     """
     N=len(data)
@@ -67,7 +68,7 @@ def threshold(data, statistics, thresholds, stat_estimator, window_size=None,
         data (array_like):                  array containing numbers whose 
                                             statistics are desired.
         statistics (func or seq of funcs):  callables returning statistic(s)
-        thresholds (seq floats) 
+        thresholds (seq floats): 
         stat_estimator (func):              callable returning initial stats
         window_size (int):                  window_size in samples over
                                             which statistic will be determined
@@ -79,24 +80,33 @@ def threshold(data, statistics, thresholds, stat_estimator, window_size=None,
     """
     pass
 
-def window_maker(data,window_size,group=1):
+def window_maker(data,window_size,windows_yielded=1,random=False):
     """
-    takes a large set of data and breaks it into windows and randomizes the order 
+    takes a large set of data and breaks it into windows and yields them in 
+    order or randomizes the order 
+    
     Args:
         data(array_like):            data to iterate over
         window_size(int):            size the of the windows the data will be
                                      broken into
-        group(int):                  number of windows returned
+        windows_yielded(int):        number of windows returned
+        random(boolean):             if false, yields the windows in order, if 
+                                     true randomizes the order
     
     yields windows in a random order
     """
+    start=windows_yielded-1
     window_count=len(data)//window_size#-group+1
-    print(window_count)
-    windows=np.random.choice(range(0,window_count),window_count,replace=False)
-    #print(windows)
+    if(random==True):
+        windows=np.random.choice(range(start,window_count),window_count,replace=False)
+    else:
+        windows=range(start,window_count)
     for win_idx in windows:
          yield data[win_idx*window_size:(win_idx+1)*window_size]
-        
+         
+         
+
+
 
 def stat_estimator(data,statistic,window_size,percent_tolerance, threshold_win
                    ):
@@ -122,7 +132,7 @@ def stat_estimator(data,statistic,window_size,percent_tolerance, threshold_win
     old_stat=0
     samples_taken=0
     #loop going through the chunks in the data in a random order
-    for window in window_maker(data,window_size):
+    for window in window_maker(data,window_size,random=True):
         
         #calculates the running mean for each statistic
         mean_stat=(old_stat*(samples_taken)+statistic(window))/(samples_taken+1)
@@ -139,8 +149,8 @@ def stat_estimator(data,statistic,window_size,percent_tolerance, threshold_win
     return mean_stat
 
 
-'''
-def stabilize(data,window_size,stat,samples_taken):
+
+def stabilize(data,window_size,stat,total_samples,random=True):
     """
     Works with array or eeg object with one channel, makes a graph of the 
     running mean for a statistic of randomly selected windows, used in order 
@@ -151,28 +161,25 @@ def stabilize(data,window_size,stat,samples_taken):
         window_size(int):              how large the chunks will be to
                                        calculate a statistic from
         stat(funtion):                 statistic used for analysis
-        samples_taken:                 number of random sample to be taken 
+        total_samples:                 number of random sample to be taken 
                                         before stop
+        random(boolean):               determines whether sampling is random
     
     Returns: graph x-axis is number of samples, x-axis is running mean 
     of the statistic
     """
     old_stat=0
     run_means=[]
-
-    for num_samples,sample_idx in enumerate(np.random.choice(
-                range(2,int(len(data)/window_size)),int(len(data)/window_size-2),replace=False)):
-        if(type(data)==EEG):
-            sample=generator(data,sample_idx,window_size).load()
-        else:
-            sample=generator(data,sample_idx,window_size)
-        mean_stat=(old_stat*num_samples+stat(sample))/(num_samples+1)
+    samples_taken=0
+    for window in window_maker(data,window_size,random=random):
+        mean_stat=(old_stat*samples_taken+stat(window))/(samples_taken+1)
         old_stat=mean_stat
         run_means.append(mean_stat)
-        if num_samples>samples_taken:
+        if samples_taken>total_samples:
             break
+        samples_taken+=1
     plt.plot(run_means)
-'''
+
 def test_stat_estimator():
     #loads the data into an EEG object
     path='C:\\Users\\Xue_Lab\\Desktop\\edf\\20150105RPSP_100155.edf'
@@ -187,6 +194,16 @@ def test_stat_estimator():
     #of digits
     assert round(est_stat[0],5) == round(calc_stat,5)
 
+def random_data_test(): 
+    #this also works with coast, fbr does not work with this data right now
+    stat=rms
+    exarray=np.random.random(50)
+    est_stat=stat_estimator(exarray,stat,5,0,50)
+    chunked_data=exarray.reshape(10,5)
+    calc_stat=np.mean(stat(np.transpose(chunked_data)))
+    assert round(est_stat,5)==round(calc_stat,5)
+
+
 if __name__ == '__main__':
     np.random.seed(0)
     samples = np.random.random((100,4))
@@ -199,7 +216,8 @@ if __name__ == '__main__':
 
 '''
 I have the window maker working properly with the stat_estimator. However,
-it does not yet work with the challenge that amplitude correlation creates.
+it does not yet work with the challenge that amplitude correlation creates. I
+also added an option to yeld the windows in order so that it is more versatile
 
 While working on this, I realized that in order to test the stat estimator, we 
 cannot compare the estimated statistic to the statistic for the entire data.
@@ -208,8 +226,10 @@ find the mean of those, that would not be the same as the maximum value for the
 entire data. The same principle applies to our attributes.
 
 The way that I tested it instead was by using the reshape funtion to break the
-data into chunks and find the mean of the rms of all of the chunks that way. I
-still need to test this for coast and fbr.
+data into chunks and find the mean of the rms of all of the chunks that way.
+When I used a random array to test it, the rms and coast worked.
+When I tested it using a short edf file, the rms worked but the coast and the 
+fbr did not. I am not sure why.
 
 I created frequency band ratio. The problem with this is that when you use the
 funtion you need to be able to specify the bands. How would I be able to make
@@ -219,12 +239,7 @@ I have the same question with amplutede correlation. Once I have the window
 maker working properly, how would I tell the stat estimator to use it that way
 when it recieves amplitude correlation.
 
-
 '''
-
-
-
-
 
 
 
