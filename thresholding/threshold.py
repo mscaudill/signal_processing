@@ -48,6 +48,44 @@ def coast(sample):
         suma+=abs(segment-old_segment)/lgth
     return suma
 
+def coast2(data):
+    """Returns the coast statistic for a sample.
+    Args:
+        data (array_like):        array containing numbers whose coast is desired
+    Returns: coast (float)
+    """
+    diff_sum=0
+    prior=data[0]
+    for sample in data[1:]:
+        diff_sum+=abs(sample-prior)
+        prior=sample
+    return diff_sum/len(data)
+
+def coast3(data,window_size=100):
+    window_generator=window_maker(data,window_size)
+    num=0
+    window_sums=[]
+    window_firsts=[]
+    window_lasts=[]
+    for window in window_generator:
+       # window[0]
+       # window[-1]
+        window_sums.append(np.sum(abs(np.diff(window,axis=0)),axis=0))
+        window_firsts.append(window.load()[0])
+        window_lasts.append(window.load()[-1])
+        num+=1
+    diff_sum=np.sum(window_sums,axis=0)
+    for first,last in zip(window_firsts[1:],window_lasts):
+        diff_sum+=abs(first-last)
+    return diff_sum/len(data)
+
+def coast4(data):
+    return np.sum(abs(np.diff(data,axis=0)),axis=0)/len(data)
+
+#currently all four coasts work properly with varying degrees of effeciency
+#coast 3 currently only works for edf objects
+#in order to make coast 3 work only for non edf objects remove the .load()
+
 def ampcorr(data1,data2,data3):
     """Returns the amplitude correlation statistic for three segments of data.
     ***this will not work in the stat_estimator funtion***
@@ -78,7 +116,7 @@ def threshold(data, statistics, thresholds, stat_estimator, window_size=None,
     Returns: boolean array where data statistics
 
     """
-    pass
+        
 
 def window_maker(data,window_size,windows_yielded=1,random=False):
     """
@@ -103,10 +141,6 @@ def window_maker(data,window_size,windows_yielded=1,random=False):
         windows=range(start,window_count)
     for win_idx in windows:
          yield data[win_idx*window_size:(win_idx+1)*window_size]
-         
-         
-
-
 
 def stat_estimator(data,statistic,window_size,percent_tolerance, threshold_win
                    ):
@@ -240,7 +274,20 @@ maker working properly, how would I tell the stat estimator to use it that way
 when it recieves amplitude correlation.
 
 '''
+class FBR():
+    
+    def __init__(self,band1,band2,band3):
+        self.band1=band1
+        self.band2=band2
+        self.band3=band3
+    
+    def cfbr(self,data):
+        N=len(data)
+        datafft=fft(data)
+        datafft2=2.0/N*np.abs(datafft[0:N//2])
+        return (sum(datafft2[self.band1:self.band2])/sum(datafft2[self.band2:self.band3]))
 
 
-
-
+#FBR(100,200,300).cfbr(shortedf)
+#Out[27]: array([0.85931694])
+        
