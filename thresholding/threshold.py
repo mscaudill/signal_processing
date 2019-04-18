@@ -1,9 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
-import pytest
-
-from core.EEG import EEG
 
 
 def fbr(data,band1=100,band2=200,band3=300):
@@ -36,20 +33,20 @@ def rms(samples,axis=0):
     result=np.mean(np.power(samples,2),axis=axis)
     return np.sqrt(result)
 
-def coast(sample):
-    """Returns the coast statistic for a sample.
+def coast1(sample):
+    """Returns the coast statistic for a sample.This is the original one I
+    created
     Args:
         data (array_like):        array containing numbers whose coast is desired
     Returns: coast (float)
     """
     suma=0
-    lgth=len(sample)
     for segment,old_segment in zip(sample[1:],sample):
-        suma+=abs(segment-old_segment)/lgth
-    return suma
+        suma+=abs(segment-old_segment)
+    return suma/len(sample)
 
 def coast2(data):
-    """Returns the coast statistic for a sample.
+    """Returns the coast statistic for a sample.This is faster than the first
     Args:
         data (array_like):        array containing numbers whose coast is desired
     Returns: coast (float)
@@ -62,29 +59,50 @@ def coast2(data):
     return diff_sum/len(data)
 
 def coast3(data,window_size=100):
+    """Returns the coast statistic for a sample. This is the window method
+    Args:
+        data (array_like):        array containing numbers whose coast is desired
+    Returns: coast (float)
+    """
     window_generator=window_maker(data,window_size)
-    num=0
     window_sums=[]
     window_firsts=[]
     window_lasts=[]
     for window in window_generator:
-       # window[0]
-       # window[-1]
         window_sums.append(np.sum(abs(np.diff(window,axis=0)),axis=0))
-        window_firsts.append(window.load()[0])
-        window_lasts.append(window.load()[-1])
-        num+=1
+        window_firsts.append(window[0])
+        window_lasts.append(window[window_size-1])
     diff_sum=np.sum(window_sums,axis=0)
     for first,last in zip(window_firsts[1:],window_lasts):
         diff_sum+=abs(first-last)
     return diff_sum/len(data)
 
 def coast4(data):
+    """Returns the coast statistic for a sample. This is the np.diff method
+    This is the fastest method. It probably would not work with an EEG file 
+    that is too big
+    Args:
+        data (array_like):        array containing numbers whose coast is desired
+    Returns: coast (float)
+    """
     return np.sum(abs(np.diff(data,axis=0)),axis=0)/len(data)
 
-#currently all four coasts work properly with varying degrees of effeciency
-#coast 3 currently only works for edf objects
-#in order to make coast 3 work only for non edf objects remove the .load()
+def coast5(data,window_size=100):
+    """Returns the coast statistic for a sample. This is another variation of
+    the window method. It is slightly slower but I think it will use less
+    memory and the code is cleaner
+    Args:
+        data (array_like):        array containing numbers whose coast is desired
+    Returns: coast (float)
+    """
+    window_generator=window_maker(data,window_size)
+    last=data[0]
+    diff_sum=0
+    for window in window_generator:
+        diff_sum+=np.sum(abs(np.diff(window,axis=0))) + abs(window[0]-last)
+        last = window[window_size-1]
+    return diff_sum/len(data)
+
 
 def ampcorr(data1,data2,data3):
     """Returns the amplitude correlation statistic for three segments of data.
@@ -214,28 +232,7 @@ def stabilize(data,window_size,stat,total_samples,random=True):
         samples_taken+=1
     plt.plot(run_means)
 
-def test_stat_estimator():
-    #loads the data into an EEG object
-    path='C:\\Users\\Xue_Lab\\Desktop\\edf\\20150105RPSP_100155.edf'
-    shortedf=EEG(path,ch_nums=[0])
-    #calculates the estimated statistic
-    est_stat=stat_estimator(shortedf,rms,1250,0,50)
-    #splits the data into a matrix with each chunk being a row
-    chunked_data=shortedf.load().reshape(int(len(shortedf)/1250),1250)
-    #calculates the mean of the rms values of all of the chunks
-    calc_stat=np.mean(rms(np.transpose(chunked_data)))
-    #I had to round the answers to make sure they went out to the same number
-    #of digits
-    assert round(est_stat[0],5) == round(calc_stat,5)
 
-def random_data_test(): 
-    #this also works with coast, fbr does not work with this data right now
-    stat=rms
-    exarray=np.random.random(50)
-    est_stat=stat_estimator(exarray,stat,5,0,50)
-    chunked_data=exarray.reshape(10,5)
-    calc_stat=np.mean(stat(np.transpose(chunked_data)))
-    assert round(est_stat,5)==round(calc_stat,5)
 
 
 if __name__ == '__main__':
@@ -249,6 +246,21 @@ if __name__ == '__main__':
 
 
 '''
+I discovered a problem with EEG object. I was not able to reference it backwards.
+When I tried using window[-1] in order to retreive the last value in the window,
+it raised an error. I am not sure if you had a reason for not allowing this. If
+you do not it could be something to eventually fix. It was not a big deal here
+because I was able to use window[window_length-1] here instead.
+
+I have added more options for coast. Each one has its own description. 
+I need to compare the memory usage for each.
+
+this is the order from fastest to slowest with an array of data
+coast4,coast5,coast3,coast2,coast1
+
+this is the order from fastest to slowest with a small edf file
+coast2,coast4,coast1,coast3,coast5
+
 I have the window maker working properly with the stat_estimator. However,
 it does not yet work with the challenge that amplitude correlation creates. I
 also added an option to yeld the windows in order so that it is more versatile
@@ -274,20 +286,8 @@ maker working properly, how would I tell the stat estimator to use it that way
 when it recieves amplitude correlation.
 
 '''
-class FBR():
-    
-    def __init__(self,band1,band2,band3):
-        self.band1=band1
-        self.band2=band2
-        self.band3=band3
-    
-    def cfbr(self,data):
-        N=len(data)
-        datafft=fft(data)
-        datafft2=2.0/N*np.abs(datafft[0:N//2])
-        return (sum(datafft2[self.band1:self.band2])/sum(datafft2[self.band2:self.band3]))
 
 
-#FBR(100,200,300).cfbr(shortedf)
-#Out[27]: array([0.85931694])
-        
+
+
+    
