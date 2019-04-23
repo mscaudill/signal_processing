@@ -58,10 +58,24 @@ def coast2(data):
         prior=sample
     return diff_sum/len(data)
 
-def coast3(data,window_size=100):
+def coast4(data):
+    """Returns the coast statistic for a sample. This is the np.diff method
+    This is the fastest method. It probably would not work with an EEG file 
+    that is too big
+    Args:
+        data (array_like):        array containing numbers whose coast is desired
+    Returns: coast (float)
+    """
+    return np.sum(abs(np.diff(data,axis=0)),axis=0)/len(data)
+
+def coast3(data,window_size=50):
     """Returns the coast statistic for a sample. This is the window method
     Args:
         data (array_like):        array containing numbers whose coast is desired
+        window_size (int):        size of windows CAUTION: if you set this to be
+                                  larger than the sample or the sample does not
+                                  divide evenly into the window size, 
+                                  this will not work
     Returns: coast (float)
     """
     window_generator=window_maker(data,window_size)
@@ -77,17 +91,9 @@ def coast3(data,window_size=100):
         diff_sum+=abs(first-last)
     return diff_sum/len(data)
 
-def coast4(data):
-    """Returns the coast statistic for a sample. This is the np.diff method
-    This is the fastest method. It probably would not work with an EEG file 
-    that is too big
-    Args:
-        data (array_like):        array containing numbers whose coast is desired
-    Returns: coast (float)
-    """
-    return np.sum(abs(np.diff(data,axis=0)),axis=0)/len(data)
 
-def coast5(data,window_size=100):
+
+def coast5(data,window_size=50):
     """Returns the coast statistic for a sample. This is another variation of
     the window method. It is slightly slower but I think it will use less
     memory and the code is cleaner
