@@ -10,11 +10,12 @@ Created on Thu Apr 18 12:50:57 2019
 import signal_processing.thresholding.threshold as th
 import Deep_Seize.core.EEG as eeg
 import numpy as np
+import thresholding.threshold as th
 
 def test_stat_estimator():
     #loads the data into an EEG object
     path='C:\\Users\\Xue_Lab\\Desktop\\edf\\20150105RPSP_100155.edf'
-    stat=th.fbr
+    stat=coast5
     shortedf=eeg.EEG(path,ch_nums=[0])
     #calculates the estimated statistic
     est_stat=th.stat_estimator(shortedf,stat,1250,0,300)
@@ -26,33 +27,20 @@ def test_stat_estimator():
     #of digits
     assert round(est_stat[0],5) == round(calc_stat,5)
     '''
-    
+    multedf=eeg.EEG(path,ch_nums=[0,1,2])
     all of the coasts work with eeg object correctly except for when it is
     chunked like this
     
-            est_stat     calc stat
-    1-false 55.24927,   12.8054
-    2-false 3075.84224, 12.8054
-    3-false 21,         12.2975343
-    4-true 12.8054,     12.8054
-    5-false 22.59973,   3014.3782
-    fbr-false 1.10738,  1.14301
+                 est_stat     calc stat
+    coast1-false 55.24927,   12.8054
+    coast2-false 3075.84224, 12.8054
+    coast3-false 21,         12.2975343
+    coast4-true 12.8054,     12.8054
+    coast5-false 22.59973,   3014.3782
     
+    If I use edfdata instead of shortedf then it works correctly
     edfdata=shortedf.load()
-    edfdata
-    1-12.8054,12.8054
-    2-12.8054,12.8064
-    3-12.8054,12.8064
-    4-12.8054,12.8064
-    5-12.8054.3014.3782
-    fbr-1.10738,1.14301
-    
-    
-    chunking
-    eeg object and coast 1,2,or3
-    
-    chunking
-    loaded data from eeg
+   
     
     '''
 def random_data_test(): 

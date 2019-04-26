@@ -99,13 +99,18 @@ def coast5(data,window_size=50):
     memory and the code is cleaner
     Args:
         data (array_like):        array containing numbers whose coast is desired
+        window_size(int):         size of windows to break the data into
     Returns: coast (float)
     """
+    #this makes sure that the window size is not larger than the sample and
+    #sets the window size to the length of the data if it is
+    if(window_size>len(data)):
+        window_size=len(data)
     window_generator=window_maker(data,window_size)
     last=data[0]
     diff_sum=0
     for window in window_generator:
-        diff_sum+=np.sum(abs(np.diff(window,axis=0))) + abs(window[0]-last)
+        diff_sum+=np.sum(abs(np.diff(window,axis=0)),axis=0) + abs(window[0]-last)
         last = window[window_size-1]
     return diff_sum/len(data)
 
@@ -252,11 +257,14 @@ if __name__ == '__main__':
 
 
 '''
-I discovered a problem with EEG object. I was not able to reference it backwards.
-When I tried using window[-1] in order to retreive the last value in the window,
-it raised an error. I am not sure if you had a reason for not allowing this. If
-you do not it could be something to eventually fix. It was not a big deal here
-because I was able to use window[window_length-1] here instead.
+One of the things that I realized with coast is that I have not tested it with
+multiple channels. Coast 4 works well with everything because it only uses numpy
+to perform calculations. The others do not work like numpy and we need to fix
+them so they do work with multiple channels
+
+Explanation of the graphs. Both show that as you increase the window_size the
+time descreases exponentially. X axis is window_size. Y axis is time
+The first one is each number on the x axis is really 50 times itself.
 
 I have added more options for coast. Each one has its own description. 
 I need to compare the memory usage for each.
@@ -267,30 +275,11 @@ coast4,coast5,coast3,coast2,coast1
 this is the order from fastest to slowest with a small edf file
 coast2,coast4,coast1,coast3,coast5
 
-I have the window maker working properly with the stat_estimator. However,
-it does not yet work with the challenge that amplitude correlation creates. I
-also added an option to yeld the windows in order so that it is more versatile
-
-While working on this, I realized that in order to test the stat estimator, we 
-cannot compare the estimated statistic to the statistic for the entire data.
-For example if we were to take find the maximum value for all of the chunks and
-find the mean of those, that would not be the same as the maximum value for the 
-entire data. The same principle applies to our attributes.
-
-The way that I tested it instead was by using the reshape funtion to break the
-data into chunks and find the mean of the rms of all of the chunks that way.
-When I used a random array to test it, the rms and coast worked.
-When I tested it using a short edf file, the rms worked but the coast and the 
-fbr did not. I am not sure why.
-
-I created frequency band ratio. The problem with this is that when you use the
-funtion you need to be able to specify the bands. How would I be able to make
-the stat_estimator do that?
-
-I have the same question with amplutede correlation. Once I have the window
-maker working properly, how would I tell the stat estimator to use it that way
-when it recieves amplitude correlation.
-
+I discovered a problem with EEG object. I was not able to reference it backwards.
+When I tried using window[-1] in order to retreive the last value in the window,
+it raised an error. I am not sure if you had a reason for not allowing this. If
+you do not it could be something to eventually fix. It was not a big deal here
+because I was able to use window[window_length-1] here instead.
 '''
 
 
