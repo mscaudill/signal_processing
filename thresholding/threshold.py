@@ -33,67 +33,19 @@ def rms(samples,axis=0):
     result=np.mean(np.power(samples,2),axis=axis)
     return np.sqrt(result)
 
-def coast1(sample):
-    """Returns the coast statistic for a sample.This is the original one I
-    created
-    Args:
-        data (array_like):        array containing numbers whose coast is desired
-    Returns: coast (float)
-    """
-    suma=0
-    for segment,old_segment in zip(sample[1:],sample):
-        suma+=abs(segment-old_segment)
-    return suma/len(sample)
-
-def coast2(data):
-    """Returns the coast statistic for a sample.This is faster than the first
-    Args:
-        data (array_like):        array containing numbers whose coast is desired
-    Returns: coast (float)
-    """
-    diff_sum=0
-    prior=data[0]
-    for sample in data[1:]:
-        diff_sum+=abs(sample-prior)
-        prior=sample
-    return diff_sum/len(data)
-
-def coast4(data):
-    """Returns the coast statistic for a sample. This is the np.diff method
-    This is the fastest method. It probably would not work with an EEG file 
-    that is too big
-    Args:
-        data (array_like):        array containing numbers whose coast is desired
-    Returns: coast (float)
-    """
-    return np.sum(abs(np.diff(data,axis=0)),axis=0)/len(data)
-
-def coast3(data,window_size=50):
-    """Returns the coast statistic for a sample. This is the window method
-    Args:
-        data (array_like):        array containing numbers whose coast is desired
-        window_size (int):        size of windows CAUTION: if you set this to be
-                                  larger than the sample or the sample does not
-                                  divide evenly into the window size, 
-                                  this will not work
-    Returns: coast (float)
-    """
+def rms2(data,window_size=50,axis=0):
+    total=0
+    if(window_size>len(data)):
+        window_size=len(data)
+    else:
+        window_size=int(window_size)
     window_generator=window_maker(data,window_size)
-    window_sums=[]
-    window_firsts=[]
-    window_lasts=[]
     for window in window_generator:
-        window_sums.append(np.sum(abs(np.diff(window,axis=0)),axis=0))
-        window_firsts.append(window[0])
-        window_lasts.append(window[window_size-1])
-    diff_sum=np.sum(window_sums,axis=0)
-    for first,last in zip(window_firsts[1:],window_lasts):
-        diff_sum+=abs(first-last)
-    return diff_sum/len(data)
+        total+=np.sum(np.power(window,2),axis=axis)
+    return np.sqrt(total/len(data))
 
 
-
-def coast5(data,window_size=50):
+def coast(data,window_size=50):
     """Returns the coast statistic for a sample. This is another variation of
     the window method. It is slightly slower but I think it will use less
     memory and the code is cleaner
@@ -106,6 +58,8 @@ def coast5(data,window_size=50):
     #sets the window size to the length of the data if it is
     if(window_size>len(data)):
         window_size=len(data)
+    else:
+        window_size=int(window_size)
     window_generator=window_maker(data,window_size)
     last=data[0]
     diff_sum=0

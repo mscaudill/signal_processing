@@ -10,7 +10,6 @@ Created on Thu Apr 18 12:50:57 2019
 import signal_processing.thresholding.threshold as th
 import Deep_Seize.core.EEG as eeg
 import numpy as np
-import thresholding.threshold as th
 
 def test_stat_estimator():
     #loads the data into an EEG object
@@ -55,3 +54,8 @@ def random_data_test():
     '''
     this works for all five coasts
     '''
+    times=[]
+    
+    t0=time.perf_counter()
+    th.coast(longedf[0:int(1e6)],window_size=int(1e6))
+    times.append(time.perf_counter()-t0)
